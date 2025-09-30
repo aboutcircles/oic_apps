@@ -110,6 +110,11 @@ export default function MintOpenPage() {
     }
   };
 
+  // Get the current Metri URL for the selected amount
+  const getMetriUrl = (amount) => {
+    return `https://app.metri.xyz/transfer/0xF46d3Ef3E310460Fe032AD08B04afD7BFF0bE8f7/crc/${amount}?data=0xf3f5858942140fd2894eeb8b74cd0ed72d24fc6675d352a2884b1be2f32256fe`;
+  };
+
   // Handle profile selection and auto-call pathfinder
   const handleProfileSelect = (profile) => {
     if (profile && profile.address) {
@@ -321,6 +326,28 @@ export default function MintOpenPage() {
             <p style={{ margin: "15px 0", fontSize: "14px", color: "#666" }}>
               Open Metri app and scan this QR code to complete the minting
               process
+            </p>
+            <div style={{ margin: "15px 0" }}>
+              <a
+                href={getMetriUrl(selectedAmount)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#0066cc",
+                  textDecoration: "underline",
+                  fontSize: "14px",
+                  display: "inline-block",
+                  padding: "8px 16px",
+                  border: "1px solid #0066cc",
+                  borderRadius: "3px",
+                  backgroundColor: "#f0f8ff",
+                }}
+              >
+                📱 Open in Metri App (Browser)
+              </a>
+            </div>
+            <p style={{ margin: "10px 0", fontSize: "12px", color: "#999" }}>
+              For mobile users: Click the link above to open directly in Metri
             </p>
           </div>
         )}
