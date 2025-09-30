@@ -2,10 +2,6 @@ import Link from "next/link";
 
 const APPS = [
   {
-    id: "mint-open",
-    name: "Mint $OPEN",
-  },
-  {
     id: "social-feed",
     name: "Pay-to-Post Social Feed",
   },
@@ -32,7 +28,10 @@ export default function HomePage() {
         </div>
         <h2>Open Internet Club Apps</h2>
 
-        <p>A collection of things you can do with $OPEN.</p>
+        <p>
+          A collection of things you can do with $OPEN. Click{" "}
+          <Link href={`/mint-open`}>here</Link> to mint $OPEN.
+        </p>
         <ul>
           {APPS.map((app) => (
             <li key={app.id}>
