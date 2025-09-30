@@ -2,6 +2,8 @@ import { createOICApp } from "../../lib/oic-framework";
 import { OICStyles } from "../../lib/oic-styles";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import ProfileDisplay from "../../components/ProfileDisplay";
+import { getProfilesByAddresses } from "../../lib/profiles";
 
 // Initialize Supabase client with service role for server operations
 const supabase = createClient(
@@ -49,6 +51,7 @@ const metadata = {
     messages: [],
     expectedHash: null,
     expectedAmount: 0,
+    profileCache: {},
   },
   onPayment: async (
     eventData,
@@ -125,7 +128,7 @@ const metadata = {
   },
 };
 
-// Load messages from Supabase
+// Load messages from Supabase and their profiles
 const loadMessages = async (setAppState) => {
   try {
     const { data, error } = await supabase
@@ -138,9 +141,18 @@ const loadMessages = async (setAppState) => {
       throw error;
     }
 
+    const messages = data || [];
+
+    // Extract unique addresses
+    const addresses = [...new Set(messages.map((msg) => msg.poster_address))];
+
+    // Load profiles for all addresses
+    const profiles = await getProfilesByAddresses(addresses);
+
     setAppState((prev) => ({
       ...prev,
-      messages: data || [],
+      messages: messages,
+      profileCache: { ...prev.profileCache, ...profiles },
     }));
   } catch (error) {
     console.error("Error loading messages:", error);
@@ -392,12 +404,24 @@ const appContent = ({
                     color: "#666",
                     display: "flex",
                     justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <span>
-                    By: {message.poster_address.substring(0, 8)}... • Paid:{" "}
-                    {message.amount_paid} $OPEN
-                  </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <ProfileDisplay
+                      address={message.poster_address}
+                      profile={appState.profileCache[message.poster_address]}
+                      showAddress={true}
+                      imageSize={24}
+                    />
+                    <span>• Paid: {message.amount_paid} $OPEN</span>
+                  </div>
                   <span>{new Date(message.created_at).toLocaleString()}</span>
                 </div>
                 <div
