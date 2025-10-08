@@ -17,12 +17,12 @@ The **App Framework** enables developers easily build mini-apps that are fueled 
 ### Blockchain Integration
 - 🔗 **Circles protocol support** - Convert Circles tokens to $OPEN
 - 💎 **Ethers.js integration** - Full blockchain interaction capabilities
-- 📊 **PostgreSQL monitoring** - Track blockchain events in real-time
+- 📡 **Circles RPC monitoring** - Track blockchain events in real-time
 - 🔐 **Recipient address validation** - Secure payment processing
 
 ### Data Persistence
 - 📁 **Supabase integration** - Modern database with real-time features
-- 🗄️ **PostgreSQL backend** - Reliable data storage and querying
+- 🗄️ **On-chain data source** - Query application events directly from Circles RPC
 - 🔄 **Real-time sync** - Automatic updates across all clients
 
 ## 🚀 Quick Start
@@ -96,7 +96,7 @@ Monitor blockchain events and database changes in real-time.
 
 **Features:**
 - Live event streaming
-- PostgreSQL connection monitoring
+- Circles RPC connection monitoring
 - Real-time blockchain event display
 - Connection status indicators
 - Event filtering and search
@@ -107,7 +107,7 @@ Monitor blockchain events and database changes in real-time.
 - **Frontend**: Next.js 14 with React 18
 - **Real-time**: Socket.io for live updates
 - **Blockchain**: Ethers.js for Web3 interactions
-- **Database**: PostgreSQL with Supabase
+- **Data sources**: Circles RPC for events, Supabase for app data
 - **Styling**: CSS-in-JS with responsive design
 - **Deployment**: Docker-ready with multiple deployment options
 
@@ -132,7 +132,7 @@ export default createOICApp(metadata, appContent);
 ```
 
 #### Real-time Event System
-- Socket.io server monitoring PostgreSQL for blockchain events
+- Socket.io server monitoring Circles RPC for blockchain events
 - Automatic client updates on payment confirmations
 - Event filtering and routing to appropriate apps
 
@@ -222,12 +222,15 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ### Required Variables
 ```bash
-# Database Configuration (for blockchain monitoring)
-DB_HOST=104.199.5.198
-DB_PORT=5432
-DB_NAME=postgres
-DB_USER=circlesarbbotreadonly
-DB_PASSWORD=your_db_password
+# Circles RPC endpoint for blockchain event polling
+CIRCLES_RPC_URL=https://rpc.circlesubi.network/
+
+# Supabase configuration (needed for social feed persistence)
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 # Application Configuration
 NODE_ENV=development

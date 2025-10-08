@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
 import ProfileSelector from "../components/ProfileSelector";
+import { fetchGroupMemberships } from "../lib/circles-rpc";
+
+const REQUIRED_GROUP_ADDRESS = "0x4E2564e5df6C1Fb10C1A018538de36E4D5844DE5";
 
 export default function MintOpenPage() {
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -11,6 +14,10 @@ export default function MintOpenPage() {
   const [qrCode, setQrCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [membershipStatus, setMembershipStatus] = useState({
+    state: "idle",
+    message: "",
+  });
 
   // Find max flow from user's wallet to the mint contract
   const findMaxFlow = async (sourceAddress) => {
@@ -115,23 +122,104 @@ export default function MintOpenPage() {
     return `https://app.metri.xyz/transfer/0xF46d3Ef3E310460Fe032AD08B04afD7BFF0bE8f7/crc/${amount}?data=0xf3f5858942140fd2894eeb8b74cd0ed72d24fc6675d352a2884b1be2f32256fe`;
   };
 
+  const verifyMembershipAndFindFlow = async (sourceAddress) => {
+    setError(null);
+    setMembershipStatus({
+      state: "checking",
+      message: "Verifying required group membership…",
+    });
+
+    try {
+      const memberships = await fetchGroupMemberships(
+        sourceAddress,
+        REQUIRED_GROUP_ADDRESS,
+        { limit: 5 },
+      );
+
+      const lowerSource = sourceAddress.toLowerCase();
+      const lowerGroup = REQUIRED_GROUP_ADDRESS.toLowerCase();
+      const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
+
+      const hasValidMembership = memberships.some((membership) => {
+        if (!membership) {
+          return false;
+        }
+
+        const memberAddress = (membership.member || "").toLowerCase();
+        const groupAddress = (membership.group || "").toLowerCase();
+
+        if (memberAddress !== lowerSource || groupAddress !== lowerGroup) {
+          return false;
+        }
+
+        const { expiryTime } = membership;
+        if (expiryTime === null || expiryTime === undefined || expiryTime === "") {
+          return true;
+        }
+
+        try {
+          const expiryBigInt = BigInt(expiryTime);
+          if (expiryBigInt === 0n) {
+            return true;
+          }
+          return expiryBigInt > nowSeconds;
+        } catch (parseError) {
+          console.warn("Unable to parse expiryTime, treating as active membership:", {
+            expiryTime,
+            parseError,
+          });
+          return true;
+        }
+      });
+
+      if (!hasValidMembership) {
+        setMembershipStatus({
+          state: "not-member",
+          message:
+            "This address is not a member of the Open Internet Club group and cannot mint $OPEN yet.",
+        });
+        setError(
+          "This address is not a member of the Open Internet Club  group (0x4E2564e5df6C1Fb10C1A018538de36E4D5844DE5). Request membership before minting.",
+        );
+        return;
+      }
+
+      setMembershipStatus({
+        state: "member",
+        message: "Membership verified. Calculating maximum mintable amount…",
+      });
+      await findMaxFlow(sourceAddress);
+      setMembershipStatus({
+        state: "member",
+        message: "Membership verified.",
+      });
+    } catch (membershipError) {
+      console.error("Failed to verify group membership:", membershipError);
+      setMembershipStatus({
+        state: "error",
+        message: `Failed to verify group membership: ${membershipError.message}`,
+      });
+      setError(
+        `Failed to verify group membership: ${membershipError.message}. Check console for details.`,
+      );
+    }
+  };
+
   // Handle profile selection and auto-call pathfinder
   const handleProfileSelect = (profile) => {
-    if (profile && profile.address) {
-      setSelectedProfile(profile);
-      setError(null);
-      setMaxFlow(null);
-      setMaxFlowHuman(0);
-      setQrCode("");
+    setSelectedProfile(profile && profile.address ? profile : null);
+    setError(null);
+    setMaxFlow(null);
+    setMaxFlowHuman(0);
+    setQrCode("");
+    setIsLoading(false);
+    setMembershipStatus({
+      state: "idle",
+      message: "",
+    });
 
-      // Automatically find max flow when profile is selected
-      findMaxFlow(profile.address);
-    } else {
-      setSelectedProfile(null);
-      setError(null);
-      setMaxFlow(null);
-      setMaxFlowHuman(0);
-      setQrCode("");
+    if (profile && profile.address) {
+      verifyMembershipAndFindFlow(profile.address);
     }
   };
 
@@ -264,6 +352,46 @@ export default function MintOpenPage() {
               onProfileSelect={handleProfileSelect}
             />
           </div>
+          {membershipStatus.state !== "idle" && (
+            <div
+              style={{
+                margin: "10px 0",
+                padding: "12px",
+                borderRadius: "3px",
+                fontSize: "14px",
+                border:
+                  membershipStatus.state === "member"
+                    ? "1px solid #4CAF50"
+                    : membershipStatus.state === "checking"
+                      ? "1px solid #2196F3"
+                      : membershipStatus.state === "error"
+                        ? "1px solid #f44336"
+                        : "1px solid #f57c00",
+                backgroundColor:
+                  membershipStatus.state === "member"
+                    ? "#e8f5e9"
+                    : membershipStatus.state === "checking"
+                      ? "#e3f2fd"
+                      : membershipStatus.state === "error"
+                        ? "#fdecea"
+                        : "#fff3e0",
+                color:
+                  membershipStatus.state === "member"
+                    ? "#1b5e20"
+                    : membershipStatus.state === "checking"
+                      ? "#0d47a1"
+                      : membershipStatus.state === "error"
+                        ? "#b71c1c"
+                        : "#e65100",
+              }}
+            >
+              {membershipStatus.state === "member" && "✅ "}
+              {membershipStatus.state === "checking" && "🔍 "}
+              {membershipStatus.state === "not-member" && "⚠️ "}
+              {membershipStatus.state === "error" && "❌ "}
+              {membershipStatus.message}
+            </div>
+          )}
           {isLoading && (
             <div
               style={{
