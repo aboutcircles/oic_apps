@@ -69,7 +69,7 @@ export default function ContributingPage() {
           <li>
             Fork the{" "}
             <a
-              href="https://github.com/pboes/oic_apps"
+              href="https://github.com/aboutcircles/oic_apps"
               target="_blank"
               style={{ color: "#0066cc", textDecoration: "underline" }}
             >
