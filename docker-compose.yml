@@ -7,11 +7,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DB_HOST=${DB_HOST:-104.199.5.198}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-postgres}
-      - DB_USER=${DB_USER:-circlesarbbotreadonly}
-      - DB_PASSWORD=${DB_PASSWORD}
+      - CIRCLES_RPC_URL=${CIRCLES_RPC_URL:-https://rpc.circlesubi.network/}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}

@@ -1,65 +1,130 @@
-import { Server } from 'socket.io';
-import { Pool } from 'pg';
+const { Server } = require("socket.io");
+const {
+  fetchOpenMiddlewareTransfers,
+  decodeDataField,
+} = require("../../lib/circles-rpc");
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: false
-});
+const POLL_INTERVAL_MS = 5000;
 
-let lastRowCount = 0;
+function toNumber(value, fallback = 0) {
+  if (value === null || value === undefined) return fallback;
+  const num = Number(value);
+  return Number.isNaN(num) ? fallback : num;
+}
 
-export default function handler(req, res) {
-  if (res.socket.server.io) {
-    console.log('Socket is already running');
-  } else {
-    console.log('Socket is initializing');
-    const io = new Server(res.socket.server);
-    res.socket.server.io = io;
+function isRowNewer(row, lastKey) {
+  if (!lastKey) return true;
 
-    io.on('connection', (socket) => {
-      console.log('Client connected:', socket.id);
+  const block = toNumber(row.blockNumber);
+  const txIndex = toNumber(row.transactionIndex);
+  const logIndex = toNumber(row.logIndex);
 
-      socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-      });
+  if (block > lastKey.block) return true;
+  if (block < lastKey.block) return false;
+  if (txIndex > lastKey.txIndex) return true;
+  if (txIndex < lastKey.txIndex) return false;
+  return logIndex > lastKey.logIndex;
+}
+
+function toIsoTimestamp(value) {
+  const numeric = toNumber(value);
+  if (!numeric) {
+    return new Date().toISOString();
+  }
+  return new Date(numeric * 1000).toISOString();
+}
+
+function deriveKey(row) {
+  return {
+    block: toNumber(row.blockNumber),
+    txIndex: toNumber(row.transactionIndex),
+    logIndex: toNumber(row.logIndex),
+  };
+}
+
+async function pollForEvents(io, sharedState) {
+  try {
+    const filter = sharedState.lastKey
+      ? [
+          {
+            Type: "FilterPredicate",
+            FilterType: "GreaterThan",
+            Column: "blockNumber",
+            Value: Math.max(sharedState.lastKey.block - 1, 0),
+          },
+        ]
+      : [];
+
+    const rows = await fetchOpenMiddlewareTransfers({
+      limit: 200,
+      order: [
+        { Column: "blockNumber", SortOrder: "ASC" },
+        { Column: "transactionIndex", SortOrder: "ASC" },
+        { Column: "logIndex", SortOrder: "ASC" },
+      ],
+      filter,
     });
 
-    // Start monitoring the database
-    const checkForChanges = async () => {
-      try {
-        const result = await pool.query('SELECT COUNT(*) as count FROM "CrcV2_OIC_OpenMiddlewareTransfer"');
-        const currentCount = parseInt(result.rows[0].count);
+    if (!rows.length) {
+      return;
+    }
 
-        if (lastRowCount === 0) {
-          lastRowCount = currentCount;
-          console.log(`Initial row count: ${currentCount}`);
-        } else if (currentCount > lastRowCount) {
-          const newRows = currentCount - lastRowCount;
-          console.log(`New rows detected: ${newRows}`);
+    const newEvents = rows.filter((row) => isRowNewer(row, sharedState.lastKey));
 
-          io.emit('db-change', {
-            table: 'CrcV2_OIC_OpenMiddlewareTransfer',
-            newRows: newRows,
-            totalRows: currentCount,
-            timestamp: new Date().toISOString()
-          });
+    if (!newEvents.length) {
+      return;
+    }
 
-          lastRowCount = currentCount;
-        }
-      } catch (error) {
-        console.error('Database monitoring error:', error);
-      }
-    };
+    sharedState.lastKey = deriveKey(newEvents[newEvents.length - 1]);
 
-    // Check every 5 seconds
-    setInterval(checkForChanges, 5000);
+    newEvents.forEach((row) => {
+      const dataString = decodeDataField(row.data);
 
-    // Initial check
-    checkForChanges();
+      io.emit("db-change", {
+        sender: row.sender,
+        recipient: row.recipient,
+        amount: row.amount ? row.amount.toString() : "0",
+        data: dataString,
+        rawData: row.data,
+        blockNumber: row.blockNumber,
+        transactionHash: row.transactionHash,
+        transactionIndex: row.transactionIndex,
+        logIndex: row.logIndex,
+        inflationaryAmount: row.inflationaryAmount,
+        onBehalf: row.onBehalf,
+        table: "CrcV2_OIC_OpenMiddlewareTransfer",
+        timestamp: toIsoTimestamp(row.timestamp),
+      });
+    });
+  } catch (error) {
+    console.error("Socket RPC monitoring error:", error);
   }
-  res.end();
 }
+
+module.exports = function handler(req, res) {
+  if (!res.socket.server.io) {
+    console.log("Socket initializing via API route");
+    const io = new Server(res.socket.server);
+    res.socket.server.io = io;
+    res.socket.server.rpcState = { lastKey: null };
+
+    io.on("connection", (socket) => {
+      console.log("Client connected:", socket.id);
+      socket.on("disconnect", () => {
+        console.log("Client disconnected:", socket.id);
+      });
+    });
+  }
+
+  if (!res.socket.server.rpcInterval) {
+    const io = res.socket.server.io;
+    const state = res.socket.server.rpcState || { lastKey: null };
+    res.socket.server.rpcState = state;
+
+    const poll = () => pollForEvents(io, state);
+    res.socket.server.rpcInterval = setInterval(poll, POLL_INTERVAL_MS);
+    poll();
+  }
+
+  res.end();
+};
