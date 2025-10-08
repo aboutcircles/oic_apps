@@ -12,7 +12,6 @@ The **App Framework** enables developers easily build mini-apps that are fueled 
 - 📱 **Real-time QR code generation** - Dynamic payment requests and transfers
 - ⚡ **Live blockchain monitoring** - Real-time event listening and updates
 - 🔄 **Socket.io integration** - Instant updates across connected clients
-- 🎨 **Retro, minimalist design** - Clean aesthetic with responsive layouts
 
 ### Blockchain Integration
 - 🔗 **Circles protocol support** - Convert Circles tokens to $OPEN
@@ -21,7 +20,6 @@ The **App Framework** enables developers easily build mini-apps that are fueled 
 - 🔐 **Recipient address validation** - Secure payment processing
 
 ### Data Persistence
-- 📁 **Supabase integration** - Modern database with real-time features
 - 🗄️ **On-chain data source** - Query application events directly from Circles RPC
 - 🔄 **Real-time sync** - Automatic updates across all clients
 
@@ -71,35 +69,6 @@ Convert your Circles tokens to $OPEN tokens using maximum flow path calculations
 - QR code generation for payments
 - Transaction verification and confirmation
 
-### 2. **Pay-to-Post Social Feed** (`/apps/social-feed`)
-A social messaging platform where users pay tokens to post messages.
-
-**Features:**
-- Token-based posting system
-- Supabase integration for message persistence
-- Real-time message updates
-- Payment verification before posting
-- Community-driven content curation
-
-### 3. **Random Number Generator** (`/apps/random-number`)
-Generate cryptographically secure random numbers with dynamic pricing.
-
-**Features:**
-- Configurable number ranges
-- Dynamic pricing based on range complexity
-- Secure random generation
-- Payment verification
-- Real-time results display
-
-### 4. **Database Monitor** (`/apps/database-monitor`)
-Monitor blockchain events and database changes in real-time.
-
-**Features:**
-- Live event streaming
-- Circles RPC connection monitoring
-- Real-time blockchain event display
-- Connection status indicators
-- Event filtering and search
 
 ## 🏗️ Framework Architecture
 
@@ -226,6 +195,7 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 CIRCLES_RPC_URL=https://rpc.circlesubi.network/
 
 # Supabase configuration (needed for social feed persistence)
+# -- this is optional and only required to use the social feed app!!!
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
