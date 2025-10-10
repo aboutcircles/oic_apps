@@ -5,6 +5,10 @@ const APPS = [
     id: "social-feed",
     name: "Pay-to-Post Social Feed",
   },
+  {
+    id: "tipping",
+    name: "Tip OIC Members",
+  },
   // {
   //   id: "random-number",
   //   name: "Random Number Generator",
