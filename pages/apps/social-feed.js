@@ -3,6 +3,7 @@ import { OICStyles } from "../../lib/oic-styles";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import ProfileDisplay from "../../components/ProfileDisplay";
+import TransactionLink from "../../components/TransactionLink";
 import { getProfilesByAddresses } from "../../lib/profiles";
 
 // Initialize Supabase client with service role for server operations
@@ -419,6 +420,7 @@ const appContent = ({
                       profile={appState.profileCache[message.poster_address]}
                       showAddress={true}
                       imageSize={24}
+                      linkToMetri={true}
                     />
                     <span>• Paid: {message.amount_paid} $OPEN</span>
                   </div>
@@ -427,7 +429,11 @@ const appContent = ({
                 <div
                   style={{ fontSize: "10px", color: "#999", marginTop: "5px" }}
                 >
-                  TX: {message.transaction_hash.substring(0, 12)}...
+                  <TransactionLink
+                    transactionHash={message.transaction_hash}
+                    truncate={true}
+                    style={{ color: "#666" }}
+                  />
                 </div>
               </div>
             ))}
