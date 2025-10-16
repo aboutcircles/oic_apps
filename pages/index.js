@@ -36,6 +36,12 @@ export default function HomePage() {
           A collection of things you can do with $OPEN. Click{" "}
           <Link href={`/mint-open`}>here</Link> to mint $OPEN.
         </p>
+        <p>
+          $OPEN is the community currency of the Open Internet Club, built on{" "}
+          <Link href={`https://aboutcircles.com/`}>Circles</Link>. Visit our{" "}
+          <Link href={`https://openinternet.club/`}>decentralised website</Link>{" "}
+          to learn more.
+        </p>
         <ul>
           {APPS.map((app) => (
             <li key={app.id}>

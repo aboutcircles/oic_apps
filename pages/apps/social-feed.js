@@ -40,7 +40,7 @@ const metadata = {
   appId: "social-feed",
   title: "Pay-to-Post Social Feed",
   description:
-    "Post messages by paying $OPEN tokens. 1 $OPEN per 100 characters (rounded up).",
+    "Post messages by paying $OPEN tokens. 1 $OPEN per 100 characters (rounded up). Not enough $OPEN to post? Find instructions for minting $OPEN on the home page.",
   recipient: "0xf48554937f18885c7f15c432c596b5843648231d",
   initialState: {
     messageText: "",

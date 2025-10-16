@@ -153,7 +153,11 @@ export default function MintOpenPage() {
         }
 
         const { expiryTime } = membership;
-        if (expiryTime === null || expiryTime === undefined || expiryTime === "") {
+        if (
+          expiryTime === null ||
+          expiryTime === undefined ||
+          expiryTime === ""
+        ) {
           return true;
         }
 
@@ -164,10 +168,13 @@ export default function MintOpenPage() {
           }
           return expiryBigInt > nowSeconds;
         } catch (parseError) {
-          console.warn("Unable to parse expiryTime, treating as active membership:", {
-            expiryTime,
-            parseError,
-          });
+          console.warn(
+            "Unable to parse expiryTime, treating as active membership:",
+            {
+              expiryTime,
+              parseError,
+            },
+          );
           return true;
         }
       });
@@ -179,7 +186,7 @@ export default function MintOpenPage() {
             "This address is not a member of the Open Internet Club group and cannot mint $OPEN yet.",
         });
         setError(
-          "This address is not a member of the Open Internet Club  group (0x4E2564e5df6C1Fb10C1A018538de36E4D5844DE5). Request membership before minting.",
+          "This address is not a member of the Open Internet Club  group (0x4E2564e5df6C1Fb10C1A018538de36E4D5844DE5). Please contact a club manager form the OIC website to join.",
         );
         return;
       }

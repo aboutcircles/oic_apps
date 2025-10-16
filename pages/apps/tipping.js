@@ -22,7 +22,8 @@ function packData(onBehalf, recipient, data) {
 const metadata = {
   appId: "tipping",
   title: "Tip OIC Members",
-  description: "Send $OPEN tips to Open Internet Club group members.",
+  description:
+    "Send $OPEN tips to Open Internet Club group members. Ran out of $OPEN to tip? Find instructions for minting $OPEN on the home page.",
   recipient: MIDDLEWARE_CONTRACT,
   initialState: {
     members: [],
