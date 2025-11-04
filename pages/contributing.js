@@ -69,20 +69,21 @@ export default function ContributingPage() {
           <li>
             Fork the{" "}
             <a
-              href="https://github.com/aboutcircles/oic_apps"
+              href="https://github.com/aboutcircles/oic_apps/tree/edgecity"
               target="_blank"
               style={{ color: "#0066cc", textDecoration: "underline" }}
             >
-              GitHub repository
+              GitHub repository (edgecity branch)
             </a>
           </li>
           <li>
             Create a new file in <code>/pages/apps/your-app-id.js</code>
+            (Make sure you create a unique app id for your app. This is used to identify your app and will be used to generate the QR code for your app.)
           </li>
           <li>Use the OIC Framework hooks and utilities</li>
           <li>Follow the existing app patterns</li>
           <li>Test your app locally</li>
-          <li>Submit a pull request</li>
+          <li>Submit a pull request to the edgecity branch</li>
         </ol>
 
         <h3>App Structure</h3>

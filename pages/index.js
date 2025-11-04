@@ -47,6 +47,9 @@ export default function HomePage() {
         <p>
           <Link href="/contributing">Contributing</Link>
         </p>
+        <p>
+          <Link href="/app-ideas">Mini OIC app ideas</Link>
+        </p>
       </div>
 
       <style jsx>{`
