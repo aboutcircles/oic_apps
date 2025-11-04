@@ -1,8 +1,7 @@
-# OIC Framework
+# OIC Apps Framework - EdgeCIty Edition
 
-> A blockchain-powered web application platform for building interactive, decentralized apps with minimal configuration.
 
-The **App Framework** enables developers easily build mini-apps that are fueled by the $OPEN.
+This is the **App Framework** for the EdgeCity community. It enables developers easily build mini-apps that are fueled by the $OPEN.
 
 ## 🌟 Features
 
@@ -70,16 +69,6 @@ Convert your Circles tokens to $OPEN tokens using maximum flow path calculations
 - Transaction verification and confirmation
 
 
-## 🏗️ Framework Architecture
-
-### Technology Stack
-- **Frontend**: Next.js 14 with React 18
-- **Real-time**: Socket.io for live updates
-- **Blockchain**: Ethers.js for Web3 interactions
-- **Data sources**: Circles RPC for events, Supabase for app data
-- **Styling**: CSS-in-JS with responsive design
-- **Deployment**: Docker-ready with multiple deployment options
-
 ### Core Components
 
 #### OIC App Factory (`lib/oic-framework.js`)
@@ -112,20 +101,6 @@ export default createOICApp(metadata, appContent);
 4. Blockchain event detected by monitoring system
 5. Payment verified and app state updated
 6. User sees immediate confirmation and results
-
-## 🚀 Deployment
-
-The OIC Framework supports multiple deployment strategies:
-
-### Option 1: DigitalOcean App Platform (Recommended)
-- **Pros**: Zero server management, auto-scaling, built-in CI/CD
-- **Cost**: $5-12/month
-- **Setup**: Connect GitHub repo, configure environment variables, deploy
-
-### Option 2: Self-hosted with Docker
-- **Pros**: Full control, cost-effective, flexible configuration
-- **Cost**: $4-6/month for basic VPS
-- **Setup**: Use provided Docker Compose configuration
 
 For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
@@ -207,11 +182,11 @@ NODE_ENV=development
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-## 🤝 Contributing
+## 🤝 Submit new OIC apps
 
-We welcome contributions! The OIC Framework is designed to be extensible and community-driven.
+To submit a new OIC app, please fork the repo ,create a new file in the `pages/apps` directory and follow the existing app patterns. Once you have created the app, please create a PR and one of the team members will be in touch.
 
-Once you have an app you'd like to list on the page, simply create a PR and one of the team members will be in touch.
+Make sure you are on the *edgecity* branch and not the master branch for this event.
 
 ## ⚖️ License
 
