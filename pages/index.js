@@ -9,6 +9,10 @@ const APPS = [
     id: "tipping",
     name: "Tip OIC Members",
   },
+  {
+    id: "trust-hunt",
+    name: "Trust Hunt - Devconnect 2025",
+  },
   // {
   //   id: "random-number",
   //   name: "Random Number Generator",
