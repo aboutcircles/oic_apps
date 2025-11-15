@@ -36,6 +36,10 @@ const metadata = {
     isLoadingData: false,
     isLoadingScores: false,
     showJoinModal: false,
+    showAdminModal: false,
+    adminRemovalType: null, // 'backer' or 'hunter'
+    adminRemovalAddress: "",
+    adminQrCode: "",
     entryType: null, // 'backer' or 'hunter'
     backerHints: "",
     hunterTrustScore: "",
@@ -259,7 +263,41 @@ const loadGameData = async (setAppState) => {
     const hunters = [];
     const seenBackers = new Set();
     const seenHunters = new Set();
+    const removalsByAddress = { backers: {}, hunters: {} };
 
+    // First pass: identify removal transactions
+    rows.forEach((row) => {
+      const entry = {};
+      columns.forEach((col, index) => {
+        entry[col] = row[index];
+      });
+
+      try {
+        if (!entry.data || entry.data === "0x") return;
+
+        const dataString = ethers.toUtf8String(entry.data);
+
+        if (dataString.startsWith("trusthunt:remove:backer:")) {
+          const targetAddress = dataString.substring("trusthunt:remove:backer:".length).toLowerCase();
+          const blockNumber = entry.blockNumber || 0;
+          if (!removalsByAddress.backers[targetAddress] || blockNumber > removalsByAddress.backers[targetAddress]) {
+            removalsByAddress.backers[targetAddress] = blockNumber;
+          }
+        } else if (dataString.startsWith("trusthunt:remove:hunter:")) {
+          const targetAddress = dataString.substring("trusthunt:remove:hunter:".length).toLowerCase();
+          const blockNumber = entry.blockNumber || 0;
+          if (!removalsByAddress.hunters[targetAddress] || blockNumber > removalsByAddress.hunters[targetAddress]) {
+            removalsByAddress.hunters[targetAddress] = blockNumber;
+          }
+        }
+      } catch (error) {
+        console.log("Failed to decode removal transaction:", entry.transactionHash);
+      }
+    });
+
+    console.log("Found removals:", removalsByAddress);
+
+    // Second pass: collect entries, filtering out removed ones
     rows.forEach((row) => {
       const entry = {};
       columns.forEach((col, index) => {
@@ -276,6 +314,14 @@ const loadGameData = async (setAppState) => {
           const hints = dataString.substring("trusthunt:backer:".length);
           // Store lowercase for consistent cache access, but will fetch with checksummed
           const lowercaseAddress = entry.sender.toLowerCase();
+          const entryBlockNumber = entry.blockNumber || 0;
+          
+          // Check if this entry should be removed
+          if (removalsByAddress.backers[lowercaseAddress] && entryBlockNumber < removalsByAddress.backers[lowercaseAddress]) {
+            console.log(`Filtering out backer ${lowercaseAddress} - removed by admin`);
+            return;
+          }
+          
           // Only add if not already seen (keep first entry)
           if (!seenBackers.has(lowercaseAddress)) {
             backers.push({
@@ -284,6 +330,7 @@ const loadGameData = async (setAppState) => {
               hints: hints,
               timestamp: entry.timestamp,
               transactionHash: entry.transactionHash,
+              blockNumber: entryBlockNumber,
             });
             seenBackers.add(lowercaseAddress);
           }
@@ -291,6 +338,14 @@ const loadGameData = async (setAppState) => {
           const trustScore = dataString.substring("trusthunt:hunter:".length);
           // Store lowercase for consistent cache access, but will fetch with checksummed
           const lowercaseAddress = entry.sender.toLowerCase();
+          const entryBlockNumber = entry.blockNumber || 0;
+          
+          // Check if this entry should be removed
+          if (removalsByAddress.hunters[lowercaseAddress] && entryBlockNumber < removalsByAddress.hunters[lowercaseAddress]) {
+            console.log(`Filtering out hunter ${lowercaseAddress} - removed by admin`);
+            return;
+          }
+          
           // Only add if not already seen (keep first entry)
           if (!seenHunters.has(lowercaseAddress)) {
             hunters.push({
@@ -299,6 +354,7 @@ const loadGameData = async (setAppState) => {
               trustScore: trustScore,
               timestamp: entry.timestamp,
               transactionHash: entry.transactionHash,
+              blockNumber: entryBlockNumber,
             });
             seenHunters.add(lowercaseAddress);
           }
@@ -395,6 +451,101 @@ const appContent = ({
     }));
   };
 
+  const handleOpenAdminModal = () => {
+    setAppState((prev) => ({
+      ...prev,
+      showAdminModal: true,
+      adminRemovalType: null,
+      adminRemovalAddress: "",
+      adminQrCode: "",
+      error: null,
+    }));
+  };
+
+  const handleCloseAdminModal = () => {
+    setAppState((prev) => ({
+      ...prev,
+      showAdminModal: false,
+      adminRemovalType: null,
+      adminRemovalAddress: "",
+      adminQrCode: "",
+      error: null,
+    }));
+  };
+
+  const handleAdminRemovalTypeSelect = (type) => {
+    setAppState((prev) => ({
+      ...prev,
+      adminRemovalType: type,
+      adminRemovalAddress: "",
+      adminQrCode: "",
+      error: null,
+    }));
+  };
+
+  const handleAdminRemovalAddressChange = (e) => {
+    setAppState((prev) => ({ ...prev, adminRemovalAddress: e.target.value }));
+  };
+
+  const generateAdminRemovalQR = async () => {
+    try {
+      const address = appState.adminRemovalAddress.trim();
+
+      if (!address) {
+        setAppState((prev) => ({
+          ...prev,
+          error: "Please enter an address to remove!",
+        }));
+        return;
+      }
+
+      // Validate address format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        setAppState((prev) => ({
+          ...prev,
+          error: "Invalid Ethereum address format!",
+        }));
+        return;
+      }
+
+      const appData = `trusthunt:remove:${appState.adminRemovalType}:${address.toLowerCase()}`;
+
+      // Pack data for middleware contract
+      const packedData = packData(
+        ethers.ZeroAddress,
+        MIDDLEWARE_CONTRACT,
+        appData,
+      );
+
+      // Create Metri URL with minimal amount
+      const metriUrl = `https://app.metri.xyz/transfer/${MIDDLEWARE_CONTRACT}/crc/0.01?data=${packedData}`;
+
+      console.log("Admin removal QR:", metriUrl);
+
+      const qrCodeDataURL = await QRCode.toDataURL(metriUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+        errorCorrectionLevel: "M",
+      });
+
+      setAppState((prev) => ({
+        ...prev,
+        adminQrCode: qrCodeDataURL,
+        error: null,
+      }));
+    } catch (error) {
+      console.error("Failed to generate admin removal QR:", error);
+      setAppState((prev) => ({
+        ...prev,
+        error: `Failed to generate QR code: ${error.message}`,
+      }));
+    }
+  };
+
   const handleEntryTypeSelect = (type) => {
     setAppState((prev) => ({
       ...prev,
@@ -436,7 +587,7 @@ const appContent = ({
       );
 
       // Create Metri URL with 1 $OPEN amount
-      const metriUrl = `https://app.metri.xyz/transfer/${MIDDLEWARE_CONTRACT}/crc?amount=1&data=${packedData}`;
+      const metriUrl = `https://app.metri.xyz/transfer/${MIDDLEWARE_CONTRACT}/crc/1?data=${packedData}`;
 
       console.log("Generating QR for:", metriUrl);
 
@@ -876,7 +1027,19 @@ const appContent = ({
           color: "#666",
         }}
       >
-        Lists auto-refresh every 10 seconds
+        Lists auto-refresh every 10{" "}
+        <span
+          onClick={handleOpenAdminModal}
+          style={{
+            cursor: "pointer",
+            textDecoration: "none",
+            color: "#666",
+          }}
+          onMouseOver={(e) => e.target.style.textDecoration = "underline"}
+          onMouseOut={(e) => e.target.style.textDecoration = "none"}
+        >
+          seconds
+        </span>
       </div>
 
       {/* Join Modal */}
@@ -1039,6 +1202,143 @@ const appContent = ({
                     Waiting for payment confirmation...
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Admin Removal Modal */}
+      {appState.showAdminModal && (
+        <div className="modal-overlay" onClick={handleCloseAdminModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-button" onClick={handleCloseAdminModal}>
+              ×
+            </button>
+            
+            <h2 style={{ ...OICStyles.h2, marginTop: 0, color: "#ef4444" }}>
+              🔒 Admin: Remove Player
+            </h2>
+
+            <div style={{ marginBottom: "20px", padding: "12px", backgroundColor: "#fff3cd", border: "1px solid #ffc107", borderRadius: "5px", fontSize: "14px" }}>
+              ⚠️ This will remove all entries from the specified address that are older than this removal transaction.
+            </div>
+
+            {/* Error Message */}
+            {appState.error && (
+              <div
+                style={{
+                  margin: "15px 0",
+                  padding: "12px",
+                  backgroundColor: "#ffe6e6",
+                  border: "2px solid #f44336",
+                  borderRadius: "5px",
+                  color: "#f44336",
+                  fontSize: "14px",
+                }}
+              >
+                ⚠️ {appState.error}
+              </div>
+            )}
+
+            {!appState.adminQrCode ? (
+              <>
+                <div style={{ display: "flex", gap: "10px", marginBottom: "25px", justifyContent: "center" }}>
+                  <button
+                    onClick={() => handleAdminRemovalTypeSelect("backer")}
+                    style={{
+                      ...OICStyles.button,
+                      ...(appState.adminRemovalType === "backer" ? OICStyles.buttonPrimary : {}),
+                      padding: "12px 24px",
+                      fontSize: "16px",
+                    }}
+                  >
+                    🎯 Remove Backer
+                  </button>
+                  <button
+                    onClick={() => handleAdminRemovalTypeSelect("hunter")}
+                    style={{
+                      ...OICStyles.button,
+                      ...(appState.adminRemovalType === "hunter" ? OICStyles.buttonPrimary : {}),
+                      padding: "12px 24px",
+                      fontSize: "16px",
+                    }}
+                  >
+                    🏹 Remove Hunter
+                  </button>
+                </div>
+
+                {appState.adminRemovalType && (
+                  <div>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>
+                      Address to Remove:
+                    </label>
+                    <input
+                      type="text"
+                      value={appState.adminRemovalAddress}
+                      onChange={handleAdminRemovalAddressChange}
+                      placeholder="0x..."
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        fontSize: "14px",
+                        borderRadius: "5px",
+                        border: "1px solid #ddd",
+                        fontFamily: "monospace",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <button
+                      onClick={generateAdminRemovalQR}
+                      style={{
+                        ...OICStyles.button,
+                        ...OICStyles.buttonPrimary,
+                        width: "100%",
+                        marginTop: "15px",
+                        padding: "12px",
+                        fontSize: "16px",
+                        backgroundColor: "#ef4444",
+                      }}
+                      disabled={!appState.adminRemovalAddress.trim()}
+                    >
+                      Generate Removal QR (0.01 $OPEN)
+                    </button>
+                  </div>
+                )}
+
+                {!appState.adminRemovalType && (
+                  <p style={{ textAlign: "center", color: "#666", fontStyle: "italic" }}>
+                    Select player type to remove
+                  </p>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: "center" }}>
+                <h3 style={{ ...OICStyles.h3, marginTop: 0 }}>
+                  Scan to Remove Player
+                </h3>
+                <img
+                  src={appState.adminQrCode}
+                  alt="Admin Removal QR Code"
+                  style={{ maxWidth: "300px", width: "100%" }}
+                />
+                <p style={{ margin: "15px 0", fontSize: "14px", color: "#666" }}>
+                  Cost: 0.01 $OPEN
+                </p>
+                <div style={{ fontSize: "12px", color: "#ef4444", fontFamily: "monospace", wordBreak: "break-all", padding: "10px", backgroundColor: "#ffe6e6", borderRadius: "5px" }}>
+                  Removing {appState.adminRemovalType}: {appState.adminRemovalAddress}
+                </div>
+                <button
+                  onClick={() => setAppState((prev) => ({ ...prev, adminQrCode: "" }))}
+                  style={{
+                    ...OICStyles.button,
+                    marginTop: "15px",
+                    padding: "8px 16px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Back
+                </button>
               </div>
             )}
           </div>
