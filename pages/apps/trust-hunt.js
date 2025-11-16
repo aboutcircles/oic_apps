@@ -25,7 +25,7 @@ const metadata = {
   appId: "trust-hunt",
   title: "Trust Hunt - Devconnect 2025",
   description:
-    "A social game for Devconnect 2025 powere by $OPEN. Circles Backers provide hints for hunters to find them. Hunters track them to boost their trust score. Entry fee: 1 $OPEN.",
+    "A social game for Devconnect 2025 powered by $OPEN. Circles Backers provide hints for hunters to find them. Hunters track them to boost their trust score. Entry fee: 1 $OPEN.",
   recipient: MIDDLEWARE_CONTRACT,
   initialState: {
     backers: [],
@@ -47,6 +47,8 @@ const metadata = {
     isWaitingForPayment: false,
     error: null,
     successMessage: null,
+    countdown: "",
+    gameEnded: false,
   },
   onPayment: async (
     eventData,
@@ -315,13 +317,13 @@ const loadGameData = async (setAppState) => {
           // Store lowercase for consistent cache access, but will fetch with checksummed
           const lowercaseAddress = entry.sender.toLowerCase();
           const entryBlockNumber = entry.blockNumber || 0;
-          
+
           // Check if this entry should be removed
           if (removalsByAddress.backers[lowercaseAddress] && entryBlockNumber < removalsByAddress.backers[lowercaseAddress]) {
             console.log(`Filtering out backer ${lowercaseAddress} - removed by admin`);
             return;
           }
-          
+
           // Only add if not already seen (keep first entry)
           if (!seenBackers.has(lowercaseAddress)) {
             backers.push({
@@ -339,13 +341,13 @@ const loadGameData = async (setAppState) => {
           // Store lowercase for consistent cache access, but will fetch with checksummed
           const lowercaseAddress = entry.sender.toLowerCase();
           const entryBlockNumber = entry.blockNumber || 0;
-          
+
           // Check if this entry should be removed
           if (removalsByAddress.hunters[lowercaseAddress] && entryBlockNumber < removalsByAddress.hunters[lowercaseAddress]) {
             console.log(`Filtering out hunter ${lowercaseAddress} - removed by admin`);
             return;
           }
-          
+
           // Only add if not already seen (keep first entry)
           if (!seenHunters.has(lowercaseAddress)) {
             hunters.push({
@@ -411,6 +413,52 @@ const appContent = ({
     const interval = setInterval(() => {
       loadGameData(setAppState);
     }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown timer for game end
+  useEffect(() => {
+    const updateCountdown = () => {
+      // Game ends: Friday, November 21st, 2025 at 12:00 PM Buenos Aires time (UTC-3)
+      const gameEndDate = new Date('2025-11-21T12:00:00-03:00');
+      const now = new Date();
+      const timeLeft = gameEndDate - now;
+
+      if (timeLeft <= 0) {
+        setAppState((prev) => ({
+          ...prev,
+          countdown: "Game ended!",
+          gameEnded: true,
+        }));
+        return;
+      }
+
+      const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+      let countdownText = "";
+      if (days > 0) {
+        countdownText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      } else if (hours > 0) {
+        countdownText = `${hours}h ${minutes}m ${seconds}s`;
+      } else if (minutes > 0) {
+        countdownText = `${minutes}m ${seconds}s`;
+      } else {
+        countdownText = `${seconds}s`;
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        countdown: countdownText,
+        gameEnded: false,
+      }));
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -715,6 +763,38 @@ const appContent = ({
         <p style={{ margin: "10px 0", lineHeight: "1.6", color: "#666" }}>
           Entry fee: 1 $OPEN (for either role)
         </p>
+      </div>
+
+      {/* Countdown Timer */}
+      <div
+        style={{
+          margin: "20px 0",
+          padding: "20px",
+          backgroundColor: appState.gameEnded ? "#fee" : "#fff3cd",
+          borderRadius: "8px",
+          border: appState.gameEnded ? "2px solid #f44336" : "2px solid #ffc107",
+          textAlign: "center",
+        }}
+      >
+        <h3 style={{ ...OICStyles.h3, marginTop: 0, color: appState.gameEnded ? "#f44336" : "#856404" }}>
+          ⏰ {appState.gameEnded ? "Game Over!" : "Game Ends In"}
+        </h3>
+        <div
+          style={{
+            fontSize: "32px",
+            fontWeight: "bold",
+            color: appState.gameEnded ? "#f44336" : "#333",
+            margin: "10px 0",
+            fontFamily: "monospace",
+          }}
+        >
+          {appState.countdown || "Loading..."}
+        </div>
+        {!appState.gameEnded && (
+          <p style={{ margin: "10px 0", fontSize: "14px", color: "#666" }}>
+            Friday, November 21st, 2025 at 12:00 PM (Buenos Aires time)
+          </p>
+        )}
       </div>
 
       {/* Success Message */}
@@ -1215,7 +1295,7 @@ const appContent = ({
             <button className="close-button" onClick={handleCloseAdminModal}>
               ×
             </button>
-            
+
             <h2 style={{ ...OICStyles.h2, marginTop: 0, color: "#ef4444" }}>
               🔒 Admin: Remove Player
             </h2>
